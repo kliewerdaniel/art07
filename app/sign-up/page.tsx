@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Palette, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { auth } from '@/lib/pocketbase'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -66,28 +67,36 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Implement PocketBase user creation
-      // const user = await pb.collection('users').create({
-      //   email: formData.email,
-      //   password: formData.password,
-      //   passwordConfirm: formData.confirmPassword,
-      //   first_name: formData.firstName,
-      //   last_name: formData.lastName,
-      //   role: formData.role,
-      //   is_profile_complete: false
-      // })
-
-      // Mock user creation for now
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Use PocketBase authentication for user creation
+      const user = await auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        role: formData.role as 'artist' | 'volunteer' | 'admin' | 'guest'
+      })
 
       toast({
         title: "Account created!",
         description: "Welcome to ArtSaaS. Please complete your profile to get started.",
       })
 
-      // Redirect to profile completion or dashboard
-      router.push('/dashboard')
+      // Redirect based on user role
+      switch (formData.role) {
+        case 'admin':
+          router.push('/dashboard/admin')
+          break
+        case 'artist':
+          router.push('/dashboard/artist')
+          break
+        case 'volunteer':
+          router.push('/dashboard/volunteer')
+          break
+        default:
+          router.push('/dashboard')
+      }
     } catch (error) {
+      console.error('Sign up error:', error)
       toast({
         title: "Sign up failed",
         description: "Please try again or contact support if the problem persists.",

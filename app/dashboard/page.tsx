@@ -1,10 +1,13 @@
 // Dashboard page with metrics, charts, and user data
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Activity, Users, DollarSign, TrendingUp, Plus, Settings } from 'lucide-react'
+import { auth } from '@/lib/pocketbase'
 
 // Mock data for demonstration
 const metricsData = [
@@ -24,6 +27,49 @@ const recentActivity = [
 ]
 
 export default function DashboardPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Check if user is authenticated
+    if (!auth.isAuthenticated) {
+      router.push('/sign-in')
+      return
+    }
+
+    // Redirect to role-specific dashboard
+    const userRole = auth.currentUser?.role
+    if (userRole) {
+      switch (userRole) {
+        case 'admin':
+          router.push('/dashboard/admin')
+          break
+        case 'artist':
+          router.push('/dashboard/artist')
+          break
+        case 'volunteer':
+          router.push('/dashboard/volunteer')
+          break
+        default:
+          // Stay on general dashboard for guests/supporters
+          break
+      }
+    }
+  }, [router])
+
+  // Show loading state while redirecting
+  if (!auth.currentUser) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-8">

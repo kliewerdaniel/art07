@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Palette, Eye, EyeOff } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { auth } from '@/lib/pocketbase'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -25,20 +26,31 @@ export default function SignInPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Implement PocketBase authentication
-      // const authData = await pb.collection('users').authWithPassword(email, password)
-
-      // Mock authentication for now
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Use PocketBase authentication
+      const authData = await auth.signIn(email, password)
 
       toast({
         title: "Welcome back!",
         description: "You've been successfully signed in.",
       })
 
-      // Redirect based on user role (mock for now)
-      router.push('/dashboard')
+      // Redirect based on user role
+      const userRole = authData.record.role
+      switch (userRole) {
+        case 'admin':
+          router.push('/dashboard/admin')
+          break
+        case 'artist':
+          router.push('/dashboard/artist')
+          break
+        case 'volunteer':
+          router.push('/dashboard/volunteer')
+          break
+        default:
+          router.push('/dashboard')
+      }
     } catch (error) {
+      console.error('Sign in error:', error)
       toast({
         title: "Sign in failed",
         description: "Please check your credentials and try again.",
