@@ -1,294 +1,461 @@
-// PocketBase client wrapper for type-safe database interactions
-import PocketBase, { BaseAuthStore } from 'pocketbase'
-import { z } from 'zod'
+// ArtSaaS PocketBase Client Configuration
+import PocketBase from 'pocketbase'
+import { env } from 'process'
 
-// Types for our database collections
-export const UserSchema = z.object({
-  id: z.string(),
-  email: z.string().email(),
-  name: z.string(),
-  avatar: z.string().optional(),
-  verified: z.boolean().default(false),
-  subscription_tier: z.enum(['free', 'pro', 'enterprise']).default('free'),
-  created: z.string(),
-  updated: z.string(),
-})
+// Initialize PocketBase client
+const pb = new PocketBase(env.POCKETBASE_URL || 'http://localhost:8090')
 
-export const SubscriptionSchema = z.object({
-  id: z.string(),
-  user: z.string(),
-  stripe_customer_id: z.string().optional(),
-  stripe_subscription_id: z.string().optional(),
-  status: z.enum(['active', 'canceled', 'past_due', 'incomplete']),
-  tier: z.enum(['free', 'pro', 'enterprise']),
-  current_period_start: z.string().optional(),
-  current_period_end: z.string().optional(),
-  cancel_at_period_end: z.boolean().default(false),
-  created: z.string(),
-  updated: z.string(),
-})
+// Types for our collections
+export interface User {
+  id: string
+  email: string
+  role: 'artist' | 'volunteer' | 'admin' | 'guest'
+  first_name: string
+  last_name: string
+  bio?: string
+  location?: string
+  website?: string
+  profile_image?: string
+  is_profile_complete: boolean
+  created: string
+  updated: string
+}
 
-export const LLMJobSchema = z.object({
-  id: z.string(),
-  user: z.string(),
-  prompt: z.string(),
-  status: z.enum(['pending', 'processing', 'completed', 'failed']),
-  output: z.string().optional(),
-  error: z.string().optional(),
-  model: z.string().optional(),
-  parameters: z.record(z.any()).optional(),
-  started_at: z.string().optional(),
-  completed_at: z.string().optional(),
-  tokens_used: z.number().optional(),
-  cost: z.number().optional(),
-  created: z.string(),
-  updated: z.string(),
-})
+export interface Artist {
+  id: string
+  user: string
+  artistic_mediums: string[]
+  experience_level: 'beginner' | 'intermediate' | 'advanced' | 'professional'
+  portfolio_website?: string
+  instagram_handle?: string
+  artistic_statement?: string
+  skills?: string
+  availability_for_mentorship: boolean
+  preferred_mentorship_type?: 'in_person' | 'virtual' | 'both'
+  languages_spoken?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  special_needs?: string
+  portfolio_views: number
+  total_donations: number
+  created: string
+  updated: string
+}
 
-export const InvoiceSchema = z.object({
-  id: z.string(),
-  user: z.string(),
-  subscription: z.string().optional(),
-  stripe_invoice_id: z.string().optional(),
-  amount: z.number(),
-  currency: z.string(),
-  status: z.enum(['draft', 'open', 'paid', 'void', 'uncollectible']),
-  description: z.string().optional(),
-  invoice_pdf: z.string().optional(),
-  due_date: z.string().optional(),
-  paid_at: z.string().optional(),
-  billing_period_start: z.string().optional(),
-  billing_period_end: z.string().optional(),
-  created: z.string(),
-  updated: z.string(),
-})
+export interface Artwork {
+  id: string
+  artist: string
+  title: string
+  description?: string
+  medium: string
+  dimensions?: string
+  year_created?: number
+  price?: number
+  is_for_sale: boolean
+  image: string
+  additional_images?: string[]
+  tags?: string
+  views: number
+  likes: number
+  is_featured: boolean
+  status: 'draft' | 'published' | 'sold' | 'archived'
+  created: string
+  updated: string
+}
 
-export type User = z.infer<typeof UserSchema>
-export type Subscription = z.infer<typeof SubscriptionSchema>
-export type LLMJob = z.infer<typeof LLMJobSchema>
-export type Invoice = z.infer<typeof InvoiceSchema>
+export interface MentorshipRequest {
+  id: string
+  artist: string
+  volunteer: string
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed'
+  request_message: string
+  response_message?: string
+  preferred_mentorship_type: 'in_person' | 'virtual' | 'both'
+  preferred_frequency?: 'weekly' | 'bi_weekly' | 'monthly' | 'as_needed'
+  goals?: string
+  special_requirements?: string
+  requested_at: string
+  responded_at?: string
+  expires_at?: string
+  created: string
+  updated: string
+}
 
-// PocketBase client class
-class PocketBaseClient {
-  private pb: PocketBase
+export interface MentorshipSession {
+  id: string
+  mentorship_request: string
+  artist: string
+  volunteer: string
+  session_date: string
+  duration_minutes: number
+  session_type: 'in_person' | 'virtual' | 'phone_call'
+  location?: string
+  meeting_link?: string
+  session_notes?: string
+  goals_discussed?: string
+  progress_made?: string
+  next_steps?: string
+  challenges_faced?: string
+  resources_shared?: string
+  artist_rating?: number
+  volunteer_rating?: number
+  artist_feedback?: string
+  volunteer_feedback?: string
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  created: string
+  updated: string
+}
 
-  constructor(url?: string) {
-    const baseUrl = url || process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://localhost:8090'
-    this.pb = new PocketBase(baseUrl)
-  }
+export interface MentalHealthAssessment {
+  id: string
+  user: string
+  assessment_type: 'phq9' | 'gad7' | 'combined'
+  assessment_date: string
+  phq9_responses?: string
+  phq9_score?: number
+  phq9_severity?: 'none' | 'mild' | 'moderate' | 'moderately_severe' | 'severe'
+  gad7_responses?: string
+  gad7_score?: number
+  gad7_severity?: 'none' | 'mild' | 'moderate' | 'severe'
+  total_score?: number
+  overall_risk_level?: 'low' | 'medium' | 'high' | 'crisis'
+  notes?: string
+  recommendations?: string
+  crisis_resources_provided: boolean
+  follow_up_needed: boolean
+  follow_up_date?: string
+  admin_reviewed: boolean
+  admin_notes?: string
+  is_complete: boolean
+  created: string
+  updated: string
+}
 
-  // Authentication methods
-  async signUp(email: string, password: string, name: string) {
+export interface Donation {
+  id: string
+  donor: string
+  artist: string
+  amount: number
+  currency: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD'
+  donation_type: 'one_time' | 'monthly' | 'artwork_purchase'
+  message?: string
+  is_anonymous: boolean
+  stripe_payment_intent_id?: string
+  stripe_customer_id?: string
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'cancelled'
+  payment_method?: 'card' | 'bank_transfer' | 'paypal' | 'other'
+  platform_fee: number
+  net_amount: number
+  processed_at?: string
+  refunded_at?: string
+  refund_amount?: number
+  refund_reason?: string
+  is_recurring: boolean
+  subscription_id?: string
+  next_billing_date?: string
+  created: string
+  updated: string
+}
+
+// Authentication helpers
+export const auth = {
+  // Sign up new user
+  async signUp(data: {
+    email: string
+    password: string
+    first_name: string
+    last_name: string
+    role: User['role']
+  }) {
     try {
-      const user = await this.pb.collection('users').create({
-        email,
-        password,
-        passwordConfirm: password,
-        name,
+      const user = await pb.collection('users').create({
+        ...data,
+        is_profile_complete: false
       })
 
-      return { success: true, user: UserSchema.parse(user) }
-    } catch (error: any) {
-      return { success: false, error: error.message }
-    }
-  }
+      // Auto-login after signup
+      await pb.collection('users').authWithPassword(data.email, data.password)
 
+      return user
+    } catch (error) {
+      console.error('Sign up error:', error)
+      throw error
+    }
+  },
+
+  // Sign in existing user
   async signIn(email: string, password: string) {
     try {
-      const authData = await this.pb.collection('users').authWithPassword(email, password)
-      return { success: true, user: UserSchema.parse(authData.record) }
-    } catch (error: any) {
-      return { success: false, error: error.message }
+      const authData = await pb.collection('users').authWithPassword(email, password)
+      return authData
+    } catch (error) {
+      console.error('Sign in error:', error)
+      throw error
     }
-  }
+  },
 
+  // Sign out
   async signOut() {
-    this.pb.authStore.clear()
-  }
-
-  async requestPasswordReset(email: string) {
     try {
-      await this.pb.collection('users').requestPasswordReset(email)
-      return { success: true }
-    } catch (error: any) {
-      return { success: false, error: error.message }
+      pb.authStore.clear()
+    } catch (error) {
+      console.error('Sign out error:', error)
+      throw error
     }
-  }
+  },
 
-  get currentUser() {
-    if (this.pb.authStore.isValid && this.pb.authStore.model) {
-      return UserSchema.parse(this.pb.authStore.model)
-    }
-    return null
-  }
+  // Get current user
+  get currentUser(): User | null {
+    return pb.authStore.model as User | null
+  },
 
-  get isAuthenticated() {
-    return this.pb.authStore.isValid
+  // Check if user is authenticated
+  get isAuthenticated(): boolean {
+    return pb.authStore.isValid
   }
+}
 
-  // User methods
-  async getUser(id: string) {
+// Artist helpers
+export const artists = {
+  // Get all artists with optional filtering
+  async getAll(filters?: {
+    medium?: string
+    experience_level?: Artist['experience_level']
+    availability_for_mentorship?: boolean
+  }) {
     try {
-      const user = await this.pb.collection('users').getOne(id)
-      return UserSchema.parse(user)
-    } catch (error: any) {
-      throw new Error(`Failed to get user: ${error.message}`)
-    }
-  }
+      let filterString = ''
 
-  async updateUser(id: string, data: Partial<Pick<User, 'name' | 'avatar'>>) {
-    try {
-      const user = await this.pb.collection('users').update(id, data)
-      return UserSchema.parse(user)
-    } catch (error: any) {
-      throw new Error(`Failed to update user: ${error.message}`)
-    }
-  }
+      if (filters) {
+        const conditions = []
+        if (filters.medium) {
+          conditions.push(`artistic_mediums ~ '${filters.medium}'`)
+        }
+        if (filters.experience_level) {
+          conditions.push(`experience_level = '${filters.experience_level}'`)
+        }
+        if (filters.availability_for_mentorship !== undefined) {
+          conditions.push(`availability_for_mentorship = ${filters.availability_for_mentorship}`)
+        }
+        filterString = conditions.join(' && ')
+      }
 
-  // Subscription methods
-  async getUserSubscription(userId: string) {
-    try {
-      const subscriptions = await this.pb.collection('subscriptions').getList(1, 1, {
-        filter: `user = "${userId}"`,
+      const artists = await pb.collection('artists').getList(1, 50, {
+        filter: filterString,
+        expand: 'user',
+        sort: '-portfolio_views'
       })
 
-      if (subscriptions.items.length > 0) {
-        return SubscriptionSchema.parse(subscriptions.items[0])
-      }
-      return null
-    } catch (error: any) {
-      throw new Error(`Failed to get subscription: ${error.message}`)
+      return artists
+    } catch (error) {
+      console.error('Get artists error:', error)
+      throw error
     }
-  }
+  },
 
-  async createSubscription(data: Omit<Subscription, 'id' | 'created' | 'updated'>) {
+  // Get artist by ID
+  async getById(id: string) {
     try {
-      const subscription = await this.pb.collection('subscriptions').create(data)
-      return SubscriptionSchema.parse(subscription)
-    } catch (error: any) {
-      throw new Error(`Failed to create subscription: ${error.message}`)
-    }
-  }
-
-  async updateSubscription(id: string, data: Partial<Subscription>) {
-    try {
-      const subscription = await this.pb.collection('subscriptions').update(id, data)
-      return SubscriptionSchema.parse(subscription)
-    } catch (error: any) {
-      throw new Error(`Failed to update subscription: ${error.message}`)
-    }
-  }
-
-  // LLM Job methods
-  async createLLMJob(data: Omit<LLMJob, 'id' | 'created' | 'updated'>) {
-    try {
-      const job = await this.pb.collection('llm_jobs').create(data)
-      return LLMJobSchema.parse(job)
-    } catch (error: any) {
-      throw new Error(`Failed to create LLM job: ${error.message}`)
-    }
-  }
-
-  async getLLMJob(id: string) {
-    try {
-      const job = await this.pb.collection('llm_jobs').getOne(id)
-      return LLMJobSchema.parse(job)
-    } catch (error: any) {
-      throw new Error(`Failed to get LLM job: ${error.message}`)
-    }
-  }
-
-  async getUserLLMJobs(userId: string, page = 1, perPage = 20) {
-    try {
-      const jobs = await this.pb.collection('llm_jobs').getList(page, perPage, {
-        filter: `user = "${userId}"`,
-        sort: '-created',
+      const artist = await pb.collection('artists').getOne(id, {
+        expand: 'user'
       })
-      return {
-        items: jobs.items.map(job => LLMJobSchema.parse(job)),
-        totalItems: jobs.totalItems,
-        totalPages: jobs.totalPages,
-      }
-    } catch (error: any) {
-      throw new Error(`Failed to get LLM jobs: ${error.message}`)
+      return artist
+    } catch (error) {
+      console.error('Get artist error:', error)
+      throw error
     }
-  }
+  },
 
-  async updateLLMJob(id: string, data: Partial<LLMJob>) {
+  // Create artist profile
+  async create(data: Omit<Artist, 'id' | 'created' | 'updated' | 'portfolio_views' | 'total_donations'>) {
     try {
-      const job = await this.pb.collection('llm_jobs').update(id, data)
-      return LLMJobSchema.parse(job)
-    } catch (error: any) {
-      throw new Error(`Failed to update LLM job: ${error.message}`)
+      const artist = await pb.collection('artists').create(data)
+      return artist
+    } catch (error) {
+      console.error('Create artist error:', error)
+      throw error
     }
-  }
+  },
 
-  // Invoice methods
-  async getUserInvoices(userId: string, page = 1, perPage = 20) {
+  // Update artist profile
+  async update(id: string, data: Partial<Artist>) {
     try {
-      const invoices = await this.pb.collection('invoices').getList(page, perPage, {
-        filter: `user = "${userId}"`,
-        sort: '-created',
-      })
-      return {
-        items: invoices.items.map(invoice => InvoiceSchema.parse(invoice)),
-        totalItems: invoices.totalItems,
-        totalPages: invoices.totalPages,
-      }
-    } catch (error: any) {
-      throw new Error(`Failed to get invoices: ${error.message}`)
-    }
-  }
-
-  async getInvoice(id: string) {
-    try {
-      const invoice = await this.pb.collection('invoices').getOne(id)
-      return InvoiceSchema.parse(invoice)
-    } catch (error: any) {
-      throw new Error(`Failed to get invoice: ${error.message}`)
-    }
-  }
-
-  // Real-time subscriptions
-  subscribeToLLMJobs(userId: string, callback: (data: any) => void) {
-    return this.pb.collection('llm_jobs').subscribe('*', (e) => {
-      if (e.record.user === userId) {
-        callback(e)
-      }
-    })
-  }
-
-  subscribeToUser(userId: string, callback: (data: any) => void) {
-    return this.pb.collection('users').subscribe(userId, callback)
-  }
-
-  unsubscribe(subscription: any) {
-    this.pb.collection('llm_jobs').unsubscribe(subscription)
-    this.pb.collection('users').unsubscribe(subscription)
-  }
-
-  // File upload helper
-  async uploadFile(file: File, collection: string, recordId?: string) {
-    try {
-      if (recordId) {
-        // Update existing record
-        return await this.pb.collection(collection).update(recordId, {
-          [file.name]: file,
-        })
-      } else {
-        // Create new record with file
-        return await this.pb.collection(collection).create({
-          [file.name]: file,
-        })
-      }
-    } catch (error: any) {
-      throw new Error(`Failed to upload file: ${error.message}`)
+      const artist = await pb.collection('artists').update(id, data)
+      return artist
+    } catch (error) {
+      console.error('Update artist error:', error)
+      throw error
     }
   }
 }
 
-// Export singleton instance
-export const pb = new PocketBaseClient()
+// Artwork helpers
+export const artworks = {
+  // Get artworks by artist
+  async getByArtist(artistId: string) {
+    try {
+      const artworks = await pb.collection('artworks').getList(1, 50, {
+        filter: `artist = '${artistId}' && status = 'published'`,
+        sort: '-is_featured,-views'
+      })
+      return artworks
+    } catch (error) {
+      console.error('Get artworks error:', error)
+      throw error
+    }
+  },
 
-// Export class for custom instances
-export { PocketBaseClient }
+  // Get featured artworks
+  async getFeatured() {
+    try {
+      const artworks = await pb.collection('artworks').getList(1, 20, {
+        filter: 'is_featured = true && status = "published"',
+        expand: 'artist',
+        sort: '-views'
+      })
+      return artworks
+    } catch (error) {
+      console.error('Get featured artworks error:', error)
+      throw error
+    }
+  }
+}
+
+// Mentorship helpers
+export const mentorship = {
+  // Get mentorship requests for a user
+  async getRequests(userId: string, type: 'artist' | 'volunteer') {
+    try {
+      const filter = type === 'artist'
+        ? `artist.user = '${userId}'`
+        : `volunteer = '${userId}'`
+
+      const requests = await pb.collection('mentorship_requests').getList(1, 50, {
+        filter,
+        expand: type === 'artist' ? 'volunteer' : 'artist,artist.user',
+        sort: '-created'
+      })
+      return requests
+    } catch (error) {
+      console.error('Get mentorship requests error:', error)
+      throw error
+    }
+  },
+
+  // Create mentorship request
+  async createRequest(data: Omit<MentorshipRequest, 'id' | 'created' | 'updated' | 'status' | 'requested_at'>) {
+    try {
+      const request = await pb.collection('mentorship_requests').create({
+        ...data,
+        status: 'pending',
+        requested_at: new Date().toISOString()
+      })
+      return request
+    } catch (error) {
+      console.error('Create mentorship request error:', error)
+      throw error
+    }
+  }
+}
+
+// Assessment helpers
+export const assessments = {
+  // Get assessments for a user
+  async getByUser(userId: string) {
+    try {
+      const assessments = await pb.collection('mental_health_assessments').getList(1, 50, {
+        filter: `user = '${userId}'`,
+        sort: '-assessment_date'
+      })
+      return assessments
+    } catch (error) {
+      console.error('Get assessments error:', error)
+      throw error
+    }
+  },
+
+  // Create new assessment
+  async create(data: Omit<MentalHealthAssessment, 'id' | 'created' | 'updated'>) {
+    try {
+      const assessment = await pb.collection('mental_health_assessments').create(data)
+      return assessment
+    } catch (error) {
+      console.error('Create assessment error:', error)
+      throw error
+    }
+  }
+}
+
+// Donation helpers
+export const donations = {
+  // Get donations for an artist
+  async getByArtist(artistId: string) {
+    try {
+      const donations = await pb.collection('donations').getList(1, 50, {
+        filter: `artist = '${artistId}' && status = 'completed'`,
+        sort: '-created'
+      })
+      return donations
+    } catch (error) {
+      console.error('Get donations error:', error)
+      throw error
+    }
+  },
+
+  // Create donation
+  async create(data: Omit<Donation, 'id' | 'created' | 'updated' | 'status' | 'platform_fee' | 'net_amount'>) {
+    try {
+      // Calculate platform fee (5% for now)
+      const platformFee = data.amount * 0.05
+      const netAmount = data.amount - platformFee
+
+      const donation = await pb.collection('donations').create({
+        ...data,
+        status: 'pending',
+        platform_fee: platformFee,
+        net_amount: netAmount
+      })
+      return donation
+    } catch (error) {
+      console.error('Create donation error:', error)
+      throw error
+    }
+  }
+}
+
+// Real-time subscriptions
+export const subscribeToCollection = (
+  collection: string,
+  callback: (data: any) => void
+) => {
+  return pb.collection(collection).subscribe('*', callback)
+}
+
+// Utility functions
+export const formatCurrency = (amount: number, currency: string = 'USD') => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency
+  }).format(amount)
+}
+
+export const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+export const calculateSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'none': return 'text-green-600'
+    case 'mild': return 'text-yellow-600'
+    case 'moderate': return 'text-orange-600'
+    case 'moderately_severe': return 'text-red-600'
+    case 'severe': return 'text-red-800'
+    default: return 'text-gray-600'
+  }
+}
+
+export default pb
